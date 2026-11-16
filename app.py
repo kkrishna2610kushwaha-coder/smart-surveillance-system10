@@ -1,15 +1,18 @@
 
-import streamlit as st
+import os
+import time
 import cv2
 import numpy as np
 import pandas as pd
-import os
-import time
+import streamlit as st
+
 from datetime import datetime
 from PIL import Image
 from ultralytics import YOLO
 
-# ---------------- PAGE CONFIG ----------------
+# =====================================
+# PAGE CONFIGURATION
+# =====================================
 
 st.set_page_config(
     page_title="Smart Surveillance System",
@@ -22,7 +25,9 @@ st.subheader(
     "Employee Monitoring and Indexing using Deep Learning"
 )
 
-# ---------------- DATABASE ----------------
+# =====================================
+# DATABASE
+# =====================================
 
 DATABASE = "employee_records.csv"
 
@@ -35,12 +40,16 @@ COLUMNS = [
 ]
 
 def initialize_database():
+
     if not os.path.exists(DATABASE):
-        pd.DataFrame(columns=COLUMNS).to_csv(
-            DATABASE, index=False
-        )
+
+        pd.DataFrame(
+            columns=COLUMNS
+        ).to_csv(DATABASE, index=False)
+
 
 def save_record(count, ids, source):
+
     initialize_database()
 
     record = pd.DataFrame([{
@@ -58,18 +67,29 @@ def save_record(count, ids, source):
         index=False
     )
 
-# ---------------- LOAD AI MODEL ----------------
+
+# =====================================
+# LOAD YOLO11 MODEL
+# =====================================
 
 @st.cache_resource
-def load_ai_model():
-    return YOLO("yolo11n.pt")
+def load_model():
 
-# ---------------- SIDEBAR ----------------
+    model = YOLO("yolo11n.pt")
+
+    return model
+
+
+initialize_database()
+
+# =====================================
+# SIDEBAR
+# =====================================
 
 st.sidebar.title("📌 Navigation")
 
 module = st.sidebar.selectbox(
-    "Choose Module",
+    "Select Module",
     [
         "Home",
         "Image Detection",
@@ -78,18 +98,30 @@ module = st.sidebar.selectbox(
     ]
 )
 
-# ---------------- MODEL LOADING ----------------
+# =====================================
+# MODEL LOADING
+# =====================================
 
 try:
-    model = load_ai_model()
+
+    with st.spinner("Loading AI Model..."):
+
+        model = load_model()
+
     st.sidebar.success("AI Model Loaded Successfully")
+
 except Exception as e:
-    st.error(f"Model Loading Error: {e}")
+
+    st.error("AI Model Loading Failed")
+
+    st.exception(e)
+
     st.stop()
 
-initialize_database()
 
-# ---------------- HOME ----------------
+# =====================================
+# HOME DASHBOARD
+# =====================================
 
 if module == "Home":
 
@@ -98,46 +130,63 @@ if module == "Home":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("AI Model", "YOLO11")
+
+        st.metric(
+            "AI Model",
+            "YOLO11"
+        )
 
     with col2:
-        st.metric("Technology", "Deep Learning")
+
+        st.metric(
+            "Technology",
+            "Deep Learning"
+        )
 
     with col3:
-        st.metric("System", "Active")
 
-    st.markdown("---")
+        st.metric(
+            "System Status",
+            "Active"
+        )
+
+    st.divider()
 
     st.subheader("Project Features")
 
     st.write("""
-    - AI Based Person Detection
-    - Employee Tracking
-    - Image Detection
-    - Video Monitoring
-    - Person Counting
-    - Employee Records
-    - CSV Report Generation
+    1. AI Based Person Detection
+    2. Employee Tracking
+    3. Image Detection
+    4. Video Monitoring
+    5. Person Counting
+    6. Employee Records
+    7. CSV Report Generation
     """)
 
     st.info(
-        "Select a module from the sidebar to start monitoring."
+        "Select a module from the sidebar."
     )
 
-# ---------------- IMAGE DETECTION ----------------
+
+# =====================================
+# IMAGE DETECTION
+# =====================================
 
 elif module == "Image Detection":
 
     st.header("🖼️ Image Detection")
 
     uploaded_file = st.file_uploader(
-        "Upload Image",
+        "Upload CCTV Image",
         type=["jpg", "jpeg", "png"]
     )
 
-    if uploaded_file is not None:
+    if uploaded_file:
 
-        image = Image.open(uploaded_file).convert("RGB")
+        image = Image.open(
+            uploaded_file
+        ).convert("RGB")
 
         st.image(
             image,
@@ -145,9 +194,9 @@ elif module == "Image Detection":
             use_container_width=True
         )
 
-        if st.button("Detect Persons"):
+        if st.button("🔍 Detect Persons"):
 
-            with st.spinner("Detecting persons..."):
+            with st.spinner("AI is detecting persons..."):
 
                 results = model.predict(
                     image,
@@ -158,10 +207,10 @@ elif module == "Image Detection":
 
                 result = results[0]
 
-                annotated = result.plot()
+                detected_image = result.plot()
 
-                annotated = cv2.cvtColor(
-                    annotated,
+                detected_image = cv2.cvtColor(
+                    detected_image,
                     cv2.COLOR_BGR2RGB
                 )
 
@@ -170,13 +219,13 @@ elif module == "Image Detection":
                 st.success("Detection Completed!")
 
                 st.image(
-                    annotated,
+                    detected_image,
                     caption="Detection Result",
                     use_container_width=True
                 )
 
                 st.metric(
-                    "Detected Persons",
+                    "Total Persons Detected",
                     person_count
                 )
 
@@ -186,7 +235,10 @@ elif module == "Image Detection":
                     "Image"
                 )
 
-# ---------------- VIDEO MONITORING ----------------
+
+# =====================================
+# VIDEO MONITORING
+# =====================================
 
 elif module == "Video Monitoring":
 
@@ -197,36 +249,51 @@ elif module == "Video Monitoring":
         type=["mp4", "avi", "mov"]
     )
 
-    if uploaded_video is not None:
+    if uploaded_video:
 
-        if st.button("Start Monitoring"):
+        if st.button("▶️ Start Monitoring"):
 
-            os.makedirs("outputs", exist_ok=True)
+            os.makedirs(
+                "outputs",
+                exist_ok=True
+            )
 
-            video_path = "outputs/input.mp4"
+            video_path = "outputs/input_video.mp4"
 
-            with open(video_path, "wb") as f:
-                f.write(uploaded_video.getbuffer())
+            with open(video_path, "wb") as file:
+
+                file.write(
+                    uploaded_video.getbuffer()
+                )
 
             cap = cv2.VideoCapture(video_path)
 
             if not cap.isOpened():
+
                 st.error("Unable to open video.")
+
                 st.stop()
 
-            video_display = st.empty()
-            status_display = st.empty()
-
-            fps = cap.get(cv2.CAP_PROP_FPS)
+            fps = cap.get(
+                cv2.CAP_PROP_FPS
+            )
 
             if not fps or fps <= 0:
+
                 fps = 25
 
             frame_delay = 1 / fps
+
+            video_display = st.empty()
+
+            status_display = st.empty()
+
             last_saved = 0
+
             total_frames = 0
 
             try:
+
                 while cap.isOpened():
 
                     start_time = time.time()
@@ -234,6 +301,7 @@ elif module == "Video Monitoring":
                     ret, frame = cap.read()
 
                     if not ret:
+
                         break
 
                     results = model.track(
@@ -255,6 +323,7 @@ elif module == "Video Monitoring":
                         result.boxes is not None
                         and result.boxes.id is not None
                     ):
+
                         tracking_ids = (
                             result.boxes.id
                             .cpu()
@@ -277,7 +346,7 @@ elif module == "Video Monitoring":
                     )
 
                     status_display.info(
-                        f"Persons Detected: {person_count} | "
+                        f"Persons: {person_count} | "
                         f"Tracking IDs: {tracking_ids}"
                     )
 
@@ -295,25 +364,39 @@ elif module == "Video Monitoring":
 
                     total_frames += 1
 
-                    processing_time = time.time() - start_time
-
-                    time.sleep(
-                        max(0, frame_delay - processing_time)
+                    processing_time = (
+                        time.time() - start_time
                     )
 
+                    time.sleep(
+                        max(
+                            0,
+                            frame_delay - processing_time
+                        )
+                    )
+
+            except Exception as e:
+
+                st.error("Video Processing Error")
+
+                st.exception(e)
+
             finally:
+
                 cap.release()
 
             st.success(
-                f"Video Monitoring Completed! "
-                f"Total Frames: {total_frames}"
+                f"Monitoring Completed! Total Frames: {total_frames}"
             )
 
-# ---------------- EMPLOYEE RECORDS ----------------
+
+# =====================================
+# EMPLOYEE RECORDS
+# =====================================
 
 elif module == "Employee Records":
 
-    st.header("📊 Employee Monitoring Records")
+    st.header("📊 Employee Records")
 
     if os.path.exists(DATABASE):
 
@@ -329,37 +412,60 @@ elif module == "Employee Records":
             col1, col2 = st.columns(2)
 
             with col1:
+
                 st.metric(
                     "Total Records",
                     len(df)
                 )
 
             with col2:
+
                 st.metric(
-                    "Total Persons Detected",
+                    "Total Person Detections",
                     int(df["Person_Count"].sum())
                 )
 
-            csv_data = df.to_csv(index=False).encode("utf-8")
+            csv_data = df.to_csv(
+                index=False
+            ).encode("utf-8")
 
             st.download_button(
-                "⬇️ Download Surveillance Report",
+                label="⬇️ Download Surveillance Report",
                 data=csv_data,
-                file_name="surveillance_report.csv",
+                file_name="employee_records.csv",
                 mime="text/csv"
             )
 
+            if st.button("🗑️ Clear All Records"):
+
+                pd.DataFrame(
+                    columns=COLUMNS
+                ).to_csv(
+                    DATABASE,
+                    index=False
+                )
+
+                st.success("All records cleared!")
+
+                st.rerun()
+
         else:
-            st.info("No records available yet.")
+
+            st.info("No records available.")
 
     else:
-        st.info("No employee records found.")
 
-# ---------------- FOOTER ----------------
+        st.info("Database not found.")
 
-st.markdown("---")
+
+# =====================================
+# FOOTER
+# =====================================
+
+st.divider()
 
 st.caption(
     "Smart Surveillance System | "
     "Python | YOLO11 | OpenCV | Deep Learning"
 )
+
